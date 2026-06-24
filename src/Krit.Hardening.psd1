@@ -1,6 +1,6 @@
 @{
     RootModule        = 'Krit.Hardening.psm1'
-    ModuleVersion     = '1.0.0'
+    ModuleVersion     = '1.0.1'
     GUID              = 'd4e5f6a7-8b9c-4d1e-9f2a-3b4c5d6e7f80'
     Author            = 'Joshua Finley'
     CompanyName       = 'Kritical Pty Ltd'
@@ -9,9 +9,14 @@
     PowerShellVersion = '5.1'
     CompatiblePSEditions = @('Desktop','Core')
 
-    RequiredModules   = @(
-        @{ ModuleName = 'Krit.OmniFramework'; ModuleVersion = '1.0.1' }
-    )
+    # 1.0.1 — Krit.OmniFramework moved from RequiredModules to
+    # ExternalModuleDependencies (PSData) for the same reason
+    # Krit.OmniFramework 1.0.2 removed its own RequiredModules: PowerShell
+    # hard-imports RequiredModules BEFORE the psm1 runs, so any AppDomain
+    # collision (stale PSFramework loaded at an older version) cascaded into
+    # Krit.Hardening import failure. Install-Module STILL pulls Krit.OmniFramework
+    # on PSGallery install via ExternalModuleDependencies. Soft-imported at use
+    # time by the consuming functions instead.
 
     FunctionsToExport = @(
         'Test-KritHardenPrereqs',
@@ -31,7 +36,22 @@
             LicenseUri   = 'https://kritical.net/legal/license'
             ProjectUri   = 'https://github.com/Sir-J-AU/Krit.Hardening'
             IconUri      = 'https://kritical.net/assets/horizontal_logo.png'
+            ExternalModuleDependencies = @('Krit.OmniFramework')
             ReleaseNotes = @'
+1.0.1 - Resilience fix (matches Krit.OmniFramework 1.0.2 pattern).
+  * Moved Krit.OmniFramework out of RequiredModules into
+    PSData.ExternalModuleDependencies. PowerShell hard-imports
+    RequiredModules BEFORE the consuming module's psm1 runs, so any
+    AppDomain collision in a transitive dep (e.g. stale PSFramework)
+    used to cascade into Krit.Hardening import failure.
+    Install-Module Krit.Hardening STILL pulls Krit.OmniFramework
+    transitively from PSGallery via ExternalModuleDependencies.
+  * Consuming functions (New-KritHardenReport, etc.) soft-import
+    Krit.OmniFramework at use time and degrade gracefully when an
+    older version is AppDomain-locked.
+  * Recommended: Update-Module Krit.OmniFramework -Force to land 1.0.2
+    in the same step, then restart pwsh.
+
 1.0.0 - Initial release (audit-only).
   * Test-KritHardenPrereqs        - 7-gate prereq check (OS / PS / admin / Defender / TPM / SecureBoot / WinRM)
   * Install-KritHardenModules     - wraps Install-Module for HotCakeX Harden-Windows-Security-Module + scipag HardeningKitty; honours the operator's existing module versions
